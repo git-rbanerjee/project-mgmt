@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Resource & Project Planner</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --border: #e3e6eb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --danger: #475569;
+    --weekend: #f1f3f6;
+    --today: #e0e7ff;
+    --row-h: 36px;
+    --col-w: 44px;
+    --label-w: 180px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+  }
+  header .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+  button, input, select {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  button:hover { background: #f3f4f6; }
+  button.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  button.primary:hover { background: #1d4ed8; }
+  button.danger { color: var(--danger); }
+  button.danger:hover { background: #f1f5f9; }
+  input[type="text"], input[type="date"], input[type="number"], select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+  input[type="color"] {
+    width: 32px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 16px;
+    padding: 16px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .panel h2 {
+    font-size: 13px;
+    margin: 0 0 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #f9fafb;
+    border: 1px solid var(--border);
+  }
+  .item .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .item .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .item .meta {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .item button {
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+  .item button.edit-btn {
+    color: var(--accent);
+  }
+  .item button.edit-btn:hover {
+    background: var(--accent-soft);
+  }
+  .item.inactive {
+    opacity: 0.55;
+  }
+  .item.inactive .name {
+    text-decoration: line-through;
+  }
+  .add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .add-form .row {
+    display: flex;
+    gap: 6px;
+  }
+  .add-form input[type="text"] {
+    flex: 1;
+    min-width: 0;
+  }
+  .grid-container {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: auto;
+    position: relative;
+    min-height: 0;
+  }
+  table.grid {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: max-content;
+  }
+  table.grid th, table.grid td {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+    text-align: center;
+    height: var(--row-h);
+    min-width: var(--col-w);
+    width: var(--col-w);
+    font-size: 11px;
+    background: var(--panel);
+  }
+  table.grid thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #fafbfc;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  table.grid thead th.month {
+    text-align: left;
+    padding-left: 6px;
+    font-weight: 600;
+    color: var(--text);
+    background: #f3f4f6;
+    border-bottom: 1px solid var(--border);
+  }
+  table.grid th.label-col, table.grid td.label-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--panel);
+    min-width: var(--label-w);
+    width: var(--label-w);
+    text-align: left;
+    padding: 0 10px;
+    border-right: 2px solid var(--border);
+    font-weight: 500;
+    font-size: 12px;
+  }
+  table.grid thead th.label-col {
+    z-index: 4;
+    background: #f3f4f6;
+  }
+  table.grid td.weekend, table.grid th.weekend {
+    background: var(--weekend);
+  }
+  table.grid td.today, table.grid th.today {
+    background: var(--today);
+  }
+  table.grid td.holiday, table.grid th.holiday {
+    background: #e5e7eb;
+  }
+  table.grid td.holiday.allocated {
+    background: #e5e7eb;
+  }
+  table.grid th.holiday {
+    color: #475569;
+    font-weight: 600;
+  }
+  table.grid td.not-available {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(107, 114, 128, 0.18) 0,
+      rgba(107, 114, 128, 0.18) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+    background-color: #f3f4f6;
+  }
+  table.grid td.available-empty {
+    background: #ffffff;
+  }
+  table.grid td.allocated {
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+  }
+  table.grid td.overallocated {
+    outline: 2px solid #1e293b;
+    outline-offset: -2px;
+  }
+  .alloc-bar {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: var(--row-h);
+  }
+  .alloc-seg {
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    color: white;
+    font-size: 10px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .alloc-seg.alloc-empty {
+    background: transparent;
+  }
+  table.grid td.cell {
+    cursor: pointer;
+  }
+  table.grid td.cell:hover {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  table.grid td.cell.range-anchor {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    outline: none;
+  }
+  .resource-row .label-col {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .resource-row .label-col .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  .modal {
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 20px;
+    width: 360px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+  .modal h3 {
+    margin: 0 0 14px;
+    font-size: 15px;
+  }
+  .modal .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  .modal .field label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .modal .field select, .modal .field input {
+    padding: 8px;
+  }
+  .modal .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .frac-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+  }
+  .frac-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .frac-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .frac-input {
+    width: 60px;
+    padding: 4px 6px !important;
+    font-size: 12px;
+  }
+  .frac-quick {
+    display: flex;
+    gap: 2px;
+  }
+  .frac-quick button {
+    padding: 2px 6px !important;
+    font-size: 11px;
+    min-width: 24px;
+  }
+  .frac-total {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .empty {
+    color: var(--muted);
+    font-style: italic;
+    padding: 8px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .legend {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    color: var(--muted);
+    font-size: 11px;
+    margin-left: 8px;
+  }
+  .view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .view-toggle button {
+    border: none;
+    border-radius: 0;
+    padding: 6px 12px;
+    background: var(--panel);
+  }
+  .view-toggle button.active {
+    background: var(--accent);
+    color: white;
+  }
+  .proj-bar {
+    position: relative;
+    height: 22px;
+    margin: 7px 0;
+    border-radius: 4px;
+    opacity: 0.85;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  table.grid td.proj-cell {
+    position: relative;
+    cursor: default;
+  }
+  table.grid td.proj-cell.in-range {
+    background-image: linear-gradient(transparent 30%, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.04) 70%, transparent 70%);
+  }
+  table.grid td.proj-cell.in-range.weekend {
+    background-image: linear-gradient(transparent 30%, rgba(0,0,0,0.06) 30%, rgba(0,0,0,0.06) 70%, transparent 70%), linear-gradient(var(--weekend), var(--weekend));
+  }
+  .alloc-count {
+    display: inline-block;
+    min-width: 16px;
+    padding: 1px 4px;
+    border-radius: 8px;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 14px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+  }
+  .util-bar {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+    overflow: hidden;
+  }
+  .util-bar > div {
+    height: 100%;
+    background: var(--accent);
+  }
+  .util-bar > div.over {
+    background: var(--danger);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📅 Resource & Project Planner</h1>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background: var(--weekend);"></div>Weekend</div>
+    <div class="legend-item"><div class="legend-swatch" style="background: var(--today);"></div>Today</div>
+    <div class="legend-item"><div class="legend-swatch" style="background: #e5e7eb;"></div>Holiday</div>
+    <div class="legend-item"><div class="legend-swatch" style="background-image: repeating-linear-gradient(45deg, rgba(107,114,128,0.5) 0, rgba(107,114,128,0.5) 2px, #f3f4f6 2px, #f3f4f6 4px);"></div>Not available</div>
+    <div class="legend-item"><div class="legend-swatch" style="background: #ffffff;"></div>Available</div>
+    <div class="legend-item" style="margin-left:8px; font-style:italic;">Click & drag across a row to bulk-edit</div>
+  </div>
+  <div class="controls">
+    <div class="view-toggle">
+      <button id="viewResBtn" class="active">Resource view</button>
+      <button id="viewProjBtn">Project view</button>
+    </div>
+    <label id="detailsToggleWrap" style="display:flex; gap:6px; align-items:center; font-size:12px; color:var(--muted);">
+      <input type="checkbox" id="showDetailsToggle" checked /> Show project details
+    </label>
+    <label>Start: <input type="date" id="startDate" /></label>
+    <label>Days: <select id="dayCount" style="padding: 6px 8px;"><option value="7">7</option><option value="14">14</option><option value="28">28</option></select></label>
+    <div class="view-toggle">
+      <button id="prevRangeBtn" title="Previous range">‹</button>
+      <button id="todayBtn">Today</button>
+      <button id="nextRangeBtn" title="Next range">›</button>
+    </div>
+    <button id="exportBtn">Export</button>
+    <button id="importBtn">Import</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" />
+    <button id="resetBtn" class="danger">Reset</button>
+  </div>
+</header>
+
+<main>
+  <aside class="sidebar">
+    <div class="panel">
+      <h2>Resources</h2>
+      <div id="resourceList" class="item-list"></div>
+      <div class="add-form">
+        <div class="row">
+          <input type="text" id="resName" placeholder="Resource name" />
+          <input type="color" id="resColor" value="#3b82f6" />
+        </div>
+        <button id="addResBtn" class="primary">+ Add Resource</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Projects</h2>
+      <div id="projectList" class="item-list"></div>
+      <div class="add-form">
+        <div class="row">
+          <input type="text" id="projName" placeholder="Project name" />
+          <input type="color" id="projColor" value="#10b981" />
+        </div>
+        <div class="row">
+          <input type="date" id="projStart" title="Project start" />
+          <input type="date" id="projEnd" title="Project end" />
+        </div>
+        <button id="addProjBtn" class="primary">+ Add Project</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Holidays</h2>
+      <div id="holidayList" class="item-list"></div>
+      <div class="add-form">
+        <div class="row">
+          <input type="date" id="holDate" title="Holiday date" />
+          <input type="text" id="holName" placeholder="Name (e.g., Memorial Day)" />
+        </div>
+        <button id="addHolBtn" class="primary">+ Add Holiday</button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="grid-container" id="gridContainer">
+    <div class="empty" id="emptyMsg" style="padding: 40px;">
+      Add resources and projects in the sidebar to begin planning.
+    </div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+const STORAGE_KEY = 'rpPlannerData_v1';
+
+const RESOURCE_PALETTE = [
+  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#06b6d4',
+  '#0ea5e9', '#14b8a6', '#0891b2', '#7c3aed', '#475569',
+  '#64748b', '#1e40af', '#5b21b6', '#0e7490', '#334155'
+];
+const PROJECT_PALETTE = [
+  '#0891b2', '#2563eb', '#7c3aed', '#1d4ed8', '#6d28d9',
+  '#0e7490', '#0d9488', '#4338ca', '#155e75', '#3730a3',
+  '#1e293b', '#1e40af', '#5b21b6', '#0c4a6e', '#312e81'
+];
+
+function pickColor(palette, usedColors) {
+  const available = palette.filter(c => !usedColors.includes(c));
+  const pool = available.length > 0 ? available : palette;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+const state = {
+  resources: [],
+  projects: [],
+  allocations: {},
+  holidays: [],
+  availability: {},
+  view: {
+    startDate: isoDate(new Date()),
+    dayCount: 14,
+    mode: 'resource',
+    showProjectDetails: true
+  }
+};
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function isoDate(d) {
+  if (typeof d === 'string') return d;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseDate(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function addDays(s, n) {
+  const d = parseDate(s);
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      Object.assign(state, data);
+      if (!Array.isArray(state.holidays)) state.holidays = [];
+      if (!state.availability || typeof state.availability !== 'object') state.availability = {};
+      if (typeof state.view.showProjectDetails !== 'boolean') state.view.showProjectDetails = true;
+      if (![7, 14, 28].includes(state.view.dayCount)) {
+        state.view.dayCount = state.view.dayCount >= 21 ? 28 : state.view.dayCount >= 10 ? 14 : 7;
+      }
+      for (const r of state.resources) {
+        if (r.active === undefined) r.active = true;
+      }
+      for (const resId in state.allocations) {
+        for (const d in state.allocations[resId]) {
+          const v = state.allocations[resId][d];
+          if (typeof v === 'string') state.allocations[resId][d] = { [v]: 1 };
+        }
+      }
+      delete state.unavailability;
+      for (const resId in state.allocations) {
+        for (const date in state.allocations[resId]) {
+          if (!state.availability[resId]) state.availability[resId] = {};
+          state.availability[resId][date] = true;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load:', e);
+  }
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function addResource(name, color) {
+  state.resources.push({ id: uid(), name, color, active: true });
+  save();
+  render();
+}
+
+function updateResource(id, fields) {
+  const r = state.resources.find(r => r.id === id);
+  if (!r) return;
+  Object.assign(r, fields);
+  save();
+  render();
+}
+
+function getActiveResources() {
+  return state.resources.filter(r => r.active !== false);
+}
+
+function removeResource(id) {
+  if (!confirm('Remove this resource and all its allocations?')) return;
+  state.resources = state.resources.filter(r => r.id !== id);
+  delete state.allocations[id];
+  delete state.availability[id];
+  save();
+  render();
+}
+
+function addProject(name, color, start, end) {
+  state.projects.push({ id: uid(), name, color, start, end });
+  save();
+  render();
+}
+
+function removeProject(id) {
+  if (!confirm('Remove this project and all its allocations?')) return;
+  state.projects = state.projects.filter(p => p.id !== id);
+  for (const resId in state.allocations) {
+    for (const date in state.allocations[resId]) {
+      const a = state.allocations[resId][date];
+      if (a && a[id] !== undefined) {
+        delete a[id];
+        if (Object.keys(a).length === 0) delete state.allocations[resId][date];
+      }
+    }
+  }
+  save();
+  render();
+}
+
+function updateProject(id, fields) {
+  const p = state.projects.find(p => p.id === id);
+  if (!p) return;
+  Object.assign(p, fields);
+  save();
+  render();
+}
+
+function addHoliday(date, name) {
+  if (!date) return;
+  if (state.holidays.some(h => h.date === date)) {
+    alert('A holiday already exists on that date.');
+    return;
+  }
+  state.holidays.push({ date, name: name || 'Holiday' });
+  state.holidays.sort((a, b) => a.date.localeCompare(b.date));
+  save();
+  render();
+}
+
+function removeHoliday(date) {
+  state.holidays = state.holidays.filter(h => h.date !== date);
+  save();
+  render();
+}
+
+function getHoliday(date) {
+  return state.holidays.find(h => h.date === date) || null;
+}
+
+function isAvailable(resId, date) {
+  return !!(state.availability[resId] && state.availability[resId][date]);
+}
+
+function setAvailable(resId, date) {
+  if (!state.availability[resId]) state.availability[resId] = {};
+  state.availability[resId][date] = true;
+}
+
+function clearAvailable(resId, date) {
+  if (state.availability[resId]) delete state.availability[resId][date];
+}
+
+function availableResourcesOn(date) {
+  return getActiveResources().filter(r => isAvailable(r.id, date)).length;
+}
+
+function getCellAllocations(resId, date) {
+  return (state.allocations[resId] && state.allocations[resId][date]) || null;
+}
+
+function getCellTotal(resId, date) {
+  const a = getCellAllocations(resId, date);
+  if (!a) return 0;
+  let s = 0;
+  for (const k in a) s += a[k];
+  return s;
+}
+
+function setCellAllocations(resId, date, allocMap) {
+  if (!state.allocations[resId]) state.allocations[resId] = {};
+  const cleaned = {};
+  for (const pid in allocMap) {
+    if (allocMap[pid] > 0) cleaned[pid] = allocMap[pid];
+  }
+  if (Object.keys(cleaned).length === 0) {
+    delete state.allocations[resId][date];
+  } else {
+    state.allocations[resId][date] = cleaned;
+  }
+}
+
+function clearCellAllocations(resId, date) {
+  if (state.allocations[resId]) delete state.allocations[resId][date];
+}
+
+function projectFractionOn(projectId, date) {
+  let sum = 0;
+  for (const resId in state.allocations) {
+    const a = state.allocations[resId][date];
+    if (a && a[projectId]) sum += a[projectId];
+  }
+  return sum;
+}
+
+function dayUsedTotal(date) {
+  let sum = 0;
+  for (const resId in state.allocations) {
+    const a = state.allocations[resId][date];
+    if (!a) continue;
+    for (const k in a) sum += a[k];
+  }
+  return sum;
+}
+
+function getProjectDateRange(projectId) {
+  const p = state.projects.find(p => p.id === projectId);
+  if (!p) return { start: null, end: null, derived: false };
+  if (p.start && p.end) return { start: p.start, end: p.end, derived: false };
+  let min = null, max = null;
+  for (const resId in state.allocations) {
+    for (const d in state.allocations[resId]) {
+      const a = state.allocations[resId][d];
+      if (a && a[projectId] > 0) {
+        if (!min || d < min) min = d;
+        if (!max || d > max) max = d;
+      }
+    }
+  }
+  return { start: min, end: max, derived: true };
+}
+
+function isDateInProjectRange(projectId, date) {
+  const p = state.projects.find(p => p.id === projectId);
+  if (!p || !p.start || !p.end) return true;
+  return date >= p.start && date <= p.end;
+}
+
+function setAllocation(resId, date, projectId) {
+  if (!state.allocations[resId]) state.allocations[resId] = {};
+  if (projectId === null || projectId === '') {
+    delete state.allocations[resId][date];
+  } else {
+    state.allocations[resId][date] = projectId;
+  }
+  save();
+  render();
+}
+
+function getDateRange() {
+  const dates = [];
+  for (let i = 0; i < state.view.dayCount; i++) {
+    dates.push(addDays(state.view.startDate, i));
+  }
+  return dates;
+}
+
+function renderResources() {
+  const list = document.getElementById('resourceList');
+  if (state.resources.length === 0) {
+    list.innerHTML = '<div class="empty">No resources yet.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  const active = state.resources.filter(r => r.active !== false);
+  const inactive = state.resources.filter(r => r.active === false);
+
+  const renderItem = (r) => {
+    const availDays = Object.keys(state.availability[r.id] || {}).length;
+    const allocDays = Object.entries(state.allocations[r.id] || {})
+      .filter(([, v]) => v && Object.values(v).reduce((s, x) => s + x, 0) > 0).length;
+    const div = document.createElement('div');
+    div.className = 'item' + (r.active === false ? ' inactive' : '');
+    div.innerHTML = `
+      <div class="swatch" style="background:${r.color}"></div>
+      <div class="name">${escapeHtml(r.name)}</div>
+      <span class="meta" title="allocated / available">${allocDays}/${availDays}</span>
+      <button class="edit-btn" title="Edit">✎</button>
+      <button class="danger" title="Remove">×</button>
+    `;
+    const [editBtn, removeBtn] = div.querySelectorAll('button');
+    editBtn.onclick = () => openResourceEditModal(r.id);
+    removeBtn.onclick = () => removeResource(r.id);
+    list.appendChild(div);
+  };
+
+  for (const r of active) renderItem(r);
+  if (inactive.length > 0) {
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:8px 0 4px;';
+    hdr.textContent = `Inactive (${inactive.length})`;
+    list.appendChild(hdr);
+    for (const r of inactive) renderItem(r);
+  }
+}
+
+function renderProjects() {
+  const list = document.getElementById('projectList');
+  if (state.projects.length === 0) {
+    list.innerHTML = '<div class="empty">No projects yet.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const p of state.projects) {
+    const range = p.start && p.end ? `${p.start} → ${p.end}` : 'no dates';
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `
+      <div class="swatch" style="background:${p.color}"></div>
+      <div style="flex:1; min-width:0;">
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="meta">${range}</div>
+      </div>
+      <button class="edit-btn" title="Edit">✎</button>
+      <button class="danger" title="Remove">×</button>
+    `;
+    const [editBtn, removeBtn] = div.querySelectorAll('button');
+    editBtn.onclick = () => openProjectEditModal(p.id);
+    removeBtn.onclick = () => removeProject(p.id);
+    list.appendChild(div);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function renderHolidays() {
+  const list = document.getElementById('holidayList');
+  if (state.holidays.length === 0) {
+    list.innerHTML = '<div class="empty">No holidays yet.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const h of state.holidays) {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `
+      <div class="swatch" style="background:#94a3b8"></div>
+      <div style="flex:1; min-width:0;">
+        <div class="name">${escapeHtml(h.name)}</div>
+        <div class="meta">${h.date}</div>
+      </div>
+      <button class="danger" title="Remove">×</button>
+    `;
+    div.querySelector('button').onclick = () => removeHoliday(h.date);
+    list.appendChild(div);
+  }
+}
+
+function renderGrid() {
+  const container = document.getElementById('gridContainer');
+  if (state.view.mode === 'project') {
+    if (state.projects.length === 0) {
+      container.innerHTML = '<div class="empty" style="padding:40px;">Add projects to see the timeline.</div>';
+      return;
+    }
+    renderProjectGrid(container);
+    return;
+  }
+  if (getActiveResources().length === 0) {
+    container.innerHTML = '<div class="empty" style="padding:40px;">Add active resources to begin planning.</div>';
+    return;
+  }
+  renderResourceGrid(container);
+}
+
+function colWidthFor(dayCount) {
+  if (dayCount <= 7) return 150;
+  if (dayCount <= 14) return 90;
+  return 48;
+}
+
+function renderResourceGrid(container) {
+
+  const dates = getDateRange();
+  const today = isoDate(new Date());
+  const projById = Object.fromEntries(state.projects.map(p => [p.id, p]));
+  const colW = colWidthFor(state.view.dayCount);
+  const showFullName = colW >= 90;
+
+  const monthGroups = [];
+  let cur = null;
+  for (const d of dates) {
+    const dt = parseDate(d);
+    const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+    if (!cur || cur.key !== key) {
+      cur = {
+        key,
+        label: dt.toLocaleString('en', { month: 'long', year: 'numeric' }),
+        count: 0
+      };
+      monthGroups.push(cur);
+    }
+    cur.count++;
+  }
+
+  let html = `<table class="grid" style="--col-w: ${colW}px;"><thead>`;
+
+  html += '<tr><th class="label-col month" rowspan="2">Resource</th>';
+  for (const mg of monthGroups) {
+    html += `<th class="month" colspan="${mg.count}">${mg.label}</th>`;
+  }
+  html += '</tr><tr>';
+  for (const d of dates) {
+    const dt = parseDate(d);
+    const dow = dt.getDay();
+    const hol = getHoliday(d);
+    const cls = [];
+    if (dow === 0 || dow === 6) cls.push('weekend');
+    if (hol) cls.push('holiday');
+    if (d === today) cls.push('today');
+    const day = dt.getDate();
+    const dayLetter = ['S','M','T','W','T','F','S'][dow];
+    const titleAttr = hol ? `${d} — ${escapeHtml(hol.name)}` : d;
+    html += `<th class="${cls.join(' ')}" title="${titleAttr}">${day}<br><span style="font-size:9px;opacity:.6;">${dayLetter}</span></th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const r of getActiveResources()) {
+    const availDays = Object.keys(state.availability[r.id] || {}).length;
+    const allocDays = Object.entries(state.allocations[r.id] || {})
+      .filter(([d, v]) => v && Object.values(v).reduce((s, x) => s + x, 0) > 0).length;
+    const meta = ` <span style="color:var(--muted); font-weight:400; font-size:10px;">(${allocDays}/${availDays})</span>`;
+    html += `<tr class="resource-row">`;
+    html += `<td class="label-col"><div class="swatch" style="background:${r.color}"></div>${escapeHtml(r.name)}${meta}</td>`;
+    for (const d of dates) {
+      const dt = parseDate(d);
+      const dow = dt.getDay();
+      const hol = getHoliday(d);
+      const avail = isAvailable(r.id, d);
+      const cellAllocs = getCellAllocations(r.id, d);
+      const total = cellAllocs ? Object.values(cellAllocs).reduce((s, v) => s + v, 0) : 0;
+      const cls = ['cell'];
+      if (dow === 0 || dow === 6) cls.push('weekend');
+      if (hol) cls.push('holiday');
+      if (d === today) cls.push('today');
+      if (total > 0) {
+        cls.push('allocated');
+        if (total > 1.0001) cls.push('overallocated');
+        const tipLines = [`${d}`];
+        if (hol) tipLines.push(escapeHtml(hol.name));
+        const entries = Object.entries(cellAllocs).filter(([, v]) => v > 0);
+        for (const [pid, frac] of entries) {
+          const p = projById[pid];
+          tipLines.push(`${p ? p.name : '?'}: ${frac}`);
+        }
+        tipLines.push(`Total: ${total.toFixed(2)}`);
+        const tip = tipLines.join(' — ');
+        if (state.view.showProjectDetails) {
+          let inner = '<div class="alloc-bar">';
+          for (const [pid, frac] of entries) {
+            const p = projById[pid];
+            if (!p) continue;
+            const w = Math.min(1, frac) * 100;
+            const label = showFullName ? `${escapeHtml(p.name)} ${frac}` : (colW >= 60 ? p.name.slice(0, 3).toUpperCase() : '');
+            inner += `<div class="alloc-seg" style="background:${p.color}; flex-basis:${w}%;">${label}</div>`;
+          }
+          if (total < 1) {
+            inner += `<div class="alloc-seg alloc-empty" style="flex-basis:${(1 - total) * 100}%;"></div>`;
+          }
+          inner += '</div>';
+          html += `<td class="${cls.join(' ')}" data-res="${r.id}" data-date="${d}" title="${tip}">${inner}</td>`;
+        } else {
+          html += `<td class="${cls.join(' ')}" data-res="${r.id}" data-date="${d}" style="background:#94a3b8" title="${tip}"></td>`;
+        }
+      } else {
+        if (avail) cls.push('available-empty');
+        else cls.push('not-available');
+        const tipParts = [d];
+        if (hol) tipParts.push(escapeHtml(hol.name));
+        tipParts.push(avail ? 'available, unallocated' : 'not available to me');
+        html += `<td class="${cls.join(' ')}" data-res="${r.id}" data-date="${d}" title="${tipParts.join(' — ')}"></td>`;
+      }
+    }
+    html += '</tr>';
+  }
+
+  html += '<tr style="background:#f9fafb;"><td class="label-col" style="color:var(--muted); font-weight:600;">Daily utilization</td>';
+  for (const d of dates) {
+    const dt = parseDate(d);
+    const dow = dt.getDay();
+    const hol = getHoliday(d);
+    const cls = [];
+    if (dow === 0 || dow === 6) cls.push('weekend');
+    if (hol) cls.push('holiday');
+    if (d === today) cls.push('today');
+    const used = dayUsedTotal(d);
+    const avail = availableResourcesOn(d);
+    const pct = avail > 0 ? Math.round((used / avail) * 100) : 0;
+    const color = pct >= 90 ? '#1e293b' : pct >= 60 ? '#475569' : pct > 0 ? '#94a3b8' : '#cbd5e1';
+    const usedDisplay = Number.isInteger(used) ? used.toString() : used.toFixed(2);
+    const tip = `${usedDisplay}/${avail} allocated (${pct}%) — ${avail} of ${getActiveResources().length} resources available`;
+    html += `<td class="${cls.join(' ')}" title="${tip}"><div style="font-size:10px; color:${color}; font-weight:600;">${usedDisplay}/${avail}</div></td>`;
+  }
+  html += '</tr>';
+
+  const weeks = groupByWeek(dates);
+  html += '<tr style="background:#f9fafb;"><td class="label-col" style="color:var(--muted); font-weight:600;">Weekly utilization</td>';
+  for (const wk of weeks) html += weeklyUtilCell(wk);
+  html += '</tr>';
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+
+  attachCellHandlers(container);
+}
+
+const dragState = {
+  active: false,
+  startResId: null,
+  startDate: null,
+  currentDate: null,
+  container: null
+};
+
+function clearDragHighlight() {
+  if (!dragState.container) return;
+  dragState.container.querySelectorAll('td.cell.range-anchor')
+    .forEach(el => el.classList.remove('range-anchor'));
+}
+
+function updateDragHighlight() {
+  clearDragHighlight();
+  if (!dragState.active || !dragState.container) return;
+  const d1 = dragState.startDate < dragState.currentDate ? dragState.startDate : dragState.currentDate;
+  const d2 = dragState.startDate < dragState.currentDate ? dragState.currentDate : dragState.startDate;
+  dragState.container.querySelectorAll('td.cell').forEach(c => {
+    if (c.dataset.res === dragState.startResId && c.dataset.date >= d1 && c.dataset.date <= d2) {
+      c.classList.add('range-anchor');
+    }
+  });
+}
+
+function finishDrag() {
+  if (!dragState.active) return;
+  const sr = dragState.startResId;
+  const sd = dragState.startDate;
+  const cd = dragState.currentDate;
+  dragState.active = false;
+  clearDragHighlight();
+  if (sd === cd) {
+    openAllocationModal(sr, sd);
+  } else {
+    const d1 = sd < cd ? sd : cd;
+    const d2 = sd < cd ? cd : sd;
+    const dates = [];
+    let d = d1;
+    while (d <= d2) { dates.push(d); d = addDays(d, 1); }
+    openBulkModal([sr], dates);
+  }
+}
+
+document.addEventListener('mouseup', finishDrag);
+
+function attachCellHandlers(container) {
+  dragState.container = container;
+  if (dragState.active) {
+    dragState.active = false;
+    clearDragHighlight();
+  }
+  const cells = container.querySelectorAll('td.cell');
+  cells.forEach(td => {
+    td.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      dragState.active = true;
+      dragState.startResId = td.dataset.res;
+      dragState.startDate = td.dataset.date;
+      dragState.currentDate = td.dataset.date;
+      dragState.container = container;
+      updateDragHighlight();
+    });
+    td.addEventListener('mouseenter', () => {
+      if (!dragState.active) return;
+      if (td.dataset.res !== dragState.startResId) return;
+      dragState.currentDate = td.dataset.date;
+      updateDragHighlight();
+    });
+  });
+}
+
+function renderProjectGrid(container) {
+  const dates = getDateRange();
+  const today = isoDate(new Date());
+  const resById = Object.fromEntries(state.resources.map(r => [r.id, r]));
+  const colW = colWidthFor(state.view.dayCount);
+
+  const monthGroups = [];
+  let cur = null;
+  for (const d of dates) {
+    const dt = parseDate(d);
+    const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+    if (!cur || cur.key !== key) {
+      cur = {
+        key,
+        label: dt.toLocaleString('en', { month: 'long', year: 'numeric' }),
+        count: 0
+      };
+      monthGroups.push(cur);
+    }
+    cur.count++;
+  }
+
+  let html = `<table class="grid" style="--col-w: ${colW}px;"><thead>`;
+  html += '<tr><th class="label-col month" rowspan="2">Project</th>';
+  for (const mg of monthGroups) {
+    html += `<th class="month" colspan="${mg.count}">${mg.label}</th>`;
+  }
+  html += '</tr><tr>';
+  for (const d of dates) {
+    const dt = parseDate(d);
+    const dow = dt.getDay();
+    const hol = getHoliday(d);
+    const cls = [];
+    if (dow === 0 || dow === 6) cls.push('weekend');
+    if (hol) cls.push('holiday');
+    if (d === today) cls.push('today');
+    const day = dt.getDate();
+    const dayLetter = ['S','M','T','W','T','F','S'][dow];
+    const titleAttr = hol ? `${d} — ${escapeHtml(hol.name)}` : d;
+    html += `<th class="${cls.join(' ')}" title="${titleAttr}">${day}<br><span style="font-size:9px;opacity:.6;">${dayLetter}</span></th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const p of state.projects) {
+    const allocCountByDate = {};
+    const allocResByDate = {};
+    for (const resId in state.allocations) {
+      for (const date in state.allocations[resId]) {
+        const a = state.allocations[resId][date];
+        if (a && a[p.id] > 0) {
+          allocCountByDate[date] = (allocCountByDate[date] || 0) + a[p.id];
+          if (!allocResByDate[date]) allocResByDate[date] = [];
+          allocResByDate[date].push({ resId, frac: a[p.id] });
+        }
+      }
+    }
+    const allocDates = Object.keys(allocCountByDate);
+    const totalAllocDays = allocDates.length;
+    const range = getProjectDateRange(p.id);
+    const datePart = range.start
+      ? `${range.start} → ${range.end}${range.derived ? ' (derived)' : ''}`
+      : 'no dates';
+    const meta = `${datePart} · ${totalAllocDays}d`;
+
+    html += `<tr class="resource-row">`;
+    html += `<td class="label-col">
+      <div class="swatch" style="background:${p.color}"></div>
+      <div style="display:flex; flex-direction:column; min-width:0;">
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.name)}</span>
+        <span style="font-size:10px; color:var(--muted);">${meta}</span>
+      </div>
+    </td>`;
+
+    for (const d of dates) {
+      const dt = parseDate(d);
+      const dow = dt.getDay();
+      const hol = getHoliday(d);
+      const cls = ['proj-cell'];
+      const inRange = range.start && range.end && d >= range.start && d <= range.end;
+      if (inRange) cls.push('in-range');
+      if (dow === 0 || dow === 6) cls.push('weekend');
+      if (hol) cls.push('holiday');
+      if (d === today) cls.push('today');
+
+      const count = allocCountByDate[d] || 0;
+      let inner = '';
+      let style = '';
+      if (count > 0) {
+        const display = Number.isInteger(count) ? count : count.toFixed(2);
+        inner = `<span class="alloc-count" style="background:${p.color}">${display}</span>`;
+      } else if (inRange && !hol) {
+        style = `background:${hexToRgba(p.color, 0.15)};`;
+      }
+      const titleParts = [escapeHtml(p.name), d];
+      if (hol) titleParts.push(escapeHtml(hol.name));
+      if (count > 0) {
+        const breakdown = allocResByDate[d].map(({ resId, frac }) => {
+          const r = resById[resId];
+          return `${r ? r.name : '?'} ${frac}`;
+        }).join(', ');
+        titleParts.push(`Total ${count.toFixed(2)}: ${breakdown}`);
+      } else if (inRange) {
+        titleParts.push('in timeline, no allocations');
+      }
+      html += `<td class="${cls.join(' ')}" style="${style}" title="${titleParts.join(' — ')}">${inner}</td>`;
+    }
+    html += '</tr>';
+  }
+
+  const weeks = groupByWeek(dates);
+  html += '<tr style="background:#f9fafb;"><td class="label-col" style="color:var(--muted); font-weight:600;">Weekly utilization</td>';
+  for (const wk of weeks) html += weeklyUtilCell(wk);
+  html += '</tr>';
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function hexToRgba(hex, alpha) {
+  const m = hex.replace('#', '');
+  const r = parseInt(m.substring(0, 2), 16);
+  const g = parseInt(m.substring(2, 4), 16);
+  const b = parseInt(m.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function groupByWeek(dates) {
+  const groups = [];
+  let cur = null;
+  for (const d of dates) {
+    const dt = parseDate(d);
+    const dow = dt.getDay();
+    const daysSinceMonday = (dow + 6) % 7;
+    const mondayDt = new Date(dt);
+    mondayDt.setDate(dt.getDate() - daysSinceMonday);
+    const weekKey = isoDate(mondayDt);
+    if (!cur || cur.key !== weekKey) {
+      cur = { key: weekKey, dates: [] };
+      groups.push(cur);
+    }
+    cur.dates.push(d);
+  }
+  return groups;
+}
+
+function weeklyUtilCell(weekGroup) {
+  let total = 0;
+  let capacity = 0;
+  for (const d of weekGroup.dates) {
+    const dow = parseDate(d).getDay();
+    const isWorkday = dow !== 0 && dow !== 6 && !getHoliday(d);
+    total += dayUsedTotal(d);
+    if (isWorkday) {
+      for (const r of getActiveResources()) {
+        if (isAvailable(r.id, d)) capacity++;
+      }
+    }
+  }
+  const pct = capacity > 0 ? Math.round((total / capacity) * 100) : 0;
+  const color = pct >= 90 ? '#1e293b' : pct >= 60 ? '#475569' : pct > 0 ? '#94a3b8' : '#cbd5e1';
+  const totalDisplay = Number.isInteger(total) ? total.toString() : total.toFixed(1);
+  const title = capacity > 0
+    ? `Week of ${weekGroup.key}: ${totalDisplay}/${capacity} slots (${pct}%)`
+    : `Week of ${weekGroup.key}: ${totalDisplay} allocations`;
+  const display = capacity > 0 ? `${totalDisplay} / ${capacity}` : `${totalDisplay}`;
+  return `<td colspan="${weekGroup.dates.length}" title="${title}" style="text-align:center; border-left:1px solid var(--border);"><div style="font-size:10px; color:${color}; font-weight:600;">${display}</div></td>`;
+}
+
+function openResourceEditModal(resId) {
+  const r = state.resources.find(r => r.id === resId);
+  if (!r) return;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <h3>Edit resource</h3>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="editResName" value="${escapeHtml(r.name)}" />
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <input type="color" id="editResColor" value="${r.color}" style="width:60px; height:32px; padding:0;" />
+      </div>
+      <div class="field">
+        <label style="display:flex; gap:6px; align-items:center; font-size:12px;">
+          <input type="checkbox" id="editResActive" ${r.active !== false ? 'checked' : ''} /> Active
+        </label>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px;">Inactive resources are hidden from the grid and excluded from capacity, but their historical allocations are preserved.</div>
+      </div>
+      <div class="actions">
+        <button id="modalCancel">Cancel</button>
+        <button id="modalSave" class="primary">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const close = () => backdrop.remove();
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.getElementById('modalCancel').onclick = close;
+  document.getElementById('modalSave').onclick = () => {
+    const name = document.getElementById('editResName').value.trim();
+    const color = document.getElementById('editResColor').value;
+    const active = document.getElementById('editResActive').checked;
+    if (!name) {
+      alert('Resource name cannot be empty.');
+      return;
+    }
+    updateResource(resId, { name, color, active });
+    close();
+  };
+}
+
+function openProjectEditModal(projId) {
+  const p = state.projects.find(p => p.id === projId);
+  if (!p) return;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <h3>Edit project</h3>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="editProjName" value="${escapeHtml(p.name)}" />
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <input type="color" id="editProjColor" value="${p.color}" style="width:60px; height:32px; padding:0;" />
+      </div>
+      <div class="field">
+        <label>Start date</label>
+        <input type="date" id="editProjStart" value="${p.start || ''}" />
+      </div>
+      <div class="field">
+        <label>End date</label>
+        <input type="date" id="editProjEnd" value="${p.end || ''}" />
+      </div>
+      <div class="actions">
+        <button id="modalCancel">Cancel</button>
+        <button id="modalSave" class="primary">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const close = () => backdrop.remove();
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.getElementById('modalCancel').onclick = close;
+  document.getElementById('modalSave').onclick = () => {
+    const name = document.getElementById('editProjName').value.trim();
+    const color = document.getElementById('editProjColor').value;
+    const start = document.getElementById('editProjStart').value || null;
+    const end = document.getElementById('editProjEnd').value || null;
+    if (!name) {
+      alert('Project name cannot be empty.');
+      return;
+    }
+    if (start && end && end < start) {
+      alert('End date must be on or after start date.');
+      return;
+    }
+    updateProject(projId, { name, color, start, end });
+    close();
+  };
+}
+
+function openAllocationModal(resId, date) {
+  openBulkModal([resId], [date]);
+}
+
+function openBulkModal(resourceIds, dates) {
+  if (!resourceIds.length || !dates.length) return;
+  const single = resourceIds.length === 1 && dates.length === 1;
+  const firstRes = state.resources.find(r => r.id === resourceIds[0]);
+  const lastDate = dates[dates.length - 1];
+
+  // Initial status + fraction map for single-cell case
+  let initialStatus = 'unavail';
+  let initialFractions = {};
+  if (single) {
+    if (isAvailable(resourceIds[0], dates[0])) initialStatus = 'avail';
+    const a = getCellAllocations(resourceIds[0], dates[0]);
+    if (a) {
+      initialStatus = 'avail';
+      initialFractions = { ...a };
+    }
+  } else {
+    initialStatus = 'avail';
+  }
+
+  const headerLabel = single
+    ? `${escapeHtml(firstRes.name)} — ${dates[0]}`
+    : `${resourceIds.length} resource${resourceIds.length > 1 ? 's' : ''} × ${dates.length} day${dates.length > 1 ? 's' : ''}`;
+  const subLabel = single
+    ? ''
+    : `<div style="font-size:11px; color:var(--muted); margin: -8px 0 12px;">${escapeHtml(resourceIds.map(id => (state.resources.find(r => r.id === id) || {}).name || '?').join(', '))} · ${dates[0]} → ${lastDate}</div>`;
+
+  const projRowsHtml = state.projects.map(p => {
+    const frac = initialFractions[p.id] || 0;
+    return `
+      <div class="frac-row" data-pid="${p.id}">
+        <div class="swatch" style="background:${p.color}; width:12px; height:12px; border-radius:3px;"></div>
+        <div class="frac-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+        <input type="number" class="frac-input" min="0" max="1" step="0.05" value="${frac}" data-pid="${p.id}" />
+        <div class="frac-quick">
+          <button type="button" data-frac="0">0</button>
+          <button type="button" data-frac="0.25">¼</button>
+          <button type="button" data-frac="0.5">½</button>
+          <button type="button" data-frac="0.75">¾</button>
+          <button type="button" data-frac="1">1</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal" style="width: 440px;">
+      <h3>${headerLabel}</h3>
+      ${subLabel}
+      <div class="field">
+        <label>Availability</label>
+        <select id="modalStatus">
+          <option value="unavail" ${initialStatus === 'unavail' ? 'selected' : ''}>Not available to me</option>
+          <option value="avail" ${initialStatus === 'avail' ? 'selected' : ''}>Available to me</option>
+        </select>
+      </div>
+      <div class="field" id="fracSection" style="display:${initialStatus === 'avail' ? 'flex' : 'none'};">
+        <label>Allocate fractions (0–1)</label>
+        <div class="frac-list">${projRowsHtml || '<div class="empty">Add a project first.</div>'}</div>
+        <div class="frac-total" id="fracTotal"></div>
+      </div>
+      ${!single ? '<div class="field"><label style="display:flex; gap:6px; align-items:center; font-size:11px; color:var(--muted);"><input type="checkbox" id="modalSkipWeekends" checked /> Skip weekends</label></div>' : ''}
+      <div class="actions">
+        <button id="modalCancel">Cancel</button>
+        <button id="modalSave" class="primary">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  const statusEl = document.getElementById('modalStatus');
+  const fracSection = document.getElementById('fracSection');
+  const fracTotalEl = document.getElementById('fracTotal');
+
+  const recalcTotal = () => {
+    let sum = 0;
+    backdrop.querySelectorAll('.frac-input').forEach(i => sum += parseFloat(i.value) || 0);
+    const display = Number.isInteger(sum) ? sum.toString() : sum.toFixed(2);
+    fracTotalEl.textContent = `Total: ${display} / 1.0` + (sum > 1.0001 ? ' (over-allocated)' : '');
+    fracTotalEl.style.color = sum > 1.0001 ? '#1e293b' : 'var(--muted)';
+    fracTotalEl.style.fontWeight = sum > 1.0001 ? '600' : '400';
+  };
+  recalcTotal();
+
+  statusEl.addEventListener('change', () => {
+    fracSection.style.display = statusEl.value === 'avail' ? 'flex' : 'none';
+  });
+
+  backdrop.querySelectorAll('.frac-input').forEach(i => {
+    i.addEventListener('input', recalcTotal);
+  });
+  backdrop.querySelectorAll('.frac-quick button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.frac-row');
+      const input = row.querySelector('.frac-input');
+      input.value = btn.dataset.frac;
+      recalcTotal();
+    });
+  });
+
+  const close = () => backdrop.remove();
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.getElementById('modalCancel').onclick = close;
+  document.getElementById('modalSave').onclick = () => {
+    const status = statusEl.value;
+    const skipWeekends = single ? false : (document.getElementById('modalSkipWeekends')?.checked ?? false);
+    const fracMap = {};
+    if (status === 'avail') {
+      backdrop.querySelectorAll('.frac-input').forEach(i => {
+        const v = parseFloat(i.value) || 0;
+        if (v > 0) fracMap[i.dataset.pid] = v;
+      });
+    }
+    let skippedOutOfRange = 0;
+    for (const resId of resourceIds) {
+      for (const d of dates) {
+        const dow = parseDate(d).getDay();
+        if (skipWeekends && (dow === 0 || dow === 6)) continue;
+        if (status === 'unavail') {
+          clearCellAllocations(resId, d);
+          clearAvailable(resId, d);
+        } else {
+          setAvailable(resId, d);
+          const filtered = {};
+          for (const pid in fracMap) {
+            if (isDateInProjectRange(pid, d)) filtered[pid] = fracMap[pid];
+            else skippedOutOfRange++;
+          }
+          setCellAllocations(resId, d, filtered);
+        }
+      }
+    }
+    save();
+    render();
+    close();
+    if (skippedOutOfRange > 0) {
+      alert(`Skipped ${skippedOutOfRange} project assignment${skippedOutOfRange > 1 ? 's' : ''} that fell outside the project's explicit start/end dates.`);
+    }
+  };
+}
+
+function render() {
+  document.getElementById('startDate').value = state.view.startDate;
+  document.getElementById('dayCount').value = state.view.dayCount;
+  document.getElementById('viewResBtn').classList.toggle('active', state.view.mode !== 'project');
+  document.getElementById('viewProjBtn').classList.toggle('active', state.view.mode === 'project');
+  document.getElementById('showDetailsToggle').checked = state.view.showProjectDetails;
+  document.getElementById('detailsToggleWrap').style.display = state.view.mode === 'project' ? 'none' : 'flex';
+  renderResources();
+  renderProjects();
+  renderHolidays();
+  renderGrid();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `planner-${isoDate(new Date())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.resources || !data.projects) throw new Error('Invalid file');
+      Object.assign(state, data);
+      save();
+      render();
+    } catch (err) {
+      alert('Could not import: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('addResBtn').onclick = () => {
+  const name = document.getElementById('resName').value.trim();
+  const color = document.getElementById('resColor').value;
+  if (!name) return;
+  addResource(name, color);
+  document.getElementById('resName').value = '';
+  document.getElementById('resColor').value = pickColor(RESOURCE_PALETTE, state.resources.map(r => r.color));
+};
+
+document.getElementById('addProjBtn').onclick = () => {
+  const name = document.getElementById('projName').value.trim();
+  const color = document.getElementById('projColor').value;
+  const start = document.getElementById('projStart').value;
+  const end = document.getElementById('projEnd').value;
+  if (!name) return;
+  addProject(name, color, start, end);
+  document.getElementById('projName').value = '';
+  document.getElementById('projStart').value = '';
+  document.getElementById('projEnd').value = '';
+  document.getElementById('projColor').value = pickColor(PROJECT_PALETTE, state.projects.map(p => p.color));
+};
+
+document.getElementById('addHolBtn').onclick = () => {
+  const date = document.getElementById('holDate').value;
+  const name = document.getElementById('holName').value.trim();
+  if (!date) {
+    alert('Pick a date for the holiday.');
+    return;
+  }
+  addHoliday(date, name);
+  document.getElementById('holDate').value = '';
+  document.getElementById('holName').value = '';
+};
+document.getElementById('holName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('addHolBtn').click();
+});
+
+document.getElementById('resName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('addResBtn').click();
+});
+document.getElementById('projName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('addProjBtn').click();
+});
+
+document.getElementById('startDate').onchange = e => {
+  state.view.startDate = e.target.value;
+  save();
+  render();
+};
+document.getElementById('dayCount').onchange = e => {
+  const v = parseInt(e.target.value);
+  state.view.dayCount = [7, 14, 28].includes(v) ? v : 14;
+  save();
+  render();
+};
+document.getElementById('todayBtn').onclick = () => {
+  state.view.startDate = isoDate(new Date());
+  save();
+  render();
+};
+document.getElementById('prevRangeBtn').onclick = () => {
+  state.view.startDate = addDays(state.view.startDate, -7);
+  save();
+  render();
+};
+document.getElementById('nextRangeBtn').onclick = () => {
+  state.view.startDate = addDays(state.view.startDate, 7);
+  save();
+  render();
+};
+
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  if (e.key === 'ArrowLeft') document.getElementById('prevRangeBtn').click();
+  else if (e.key === 'ArrowRight') document.getElementById('nextRangeBtn').click();
+});
+document.getElementById('viewResBtn').onclick = () => {
+  state.view.mode = 'resource';
+  save();
+  render();
+};
+document.getElementById('viewProjBtn').onclick = () => {
+  state.view.mode = 'project';
+  save();
+  render();
+};
+document.getElementById('showDetailsToggle').onchange = e => {
+  state.view.showProjectDetails = e.target.checked;
+  save();
+  render();
+};
+document.getElementById('exportBtn').onclick = exportData;
+document.getElementById('importBtn').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = e => {
+  if (e.target.files[0]) importData(e.target.files[0]);
+};
+document.getElementById('resetBtn').onclick = () => {
+  if (!confirm('Erase all resources, projects, and allocations?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state.resources = [];
+  state.projects = [];
+  state.allocations = {};
+  state.holidays = [];
+  state.availability = {};
+  state.view = { startDate: isoDate(new Date()), dayCount: 14, mode: 'resource', showProjectDetails: true };
+  render();
+};
+
+load();
+document.getElementById('resColor').value = pickColor(RESOURCE_PALETTE, state.resources.map(r => r.color));
+document.getElementById('projColor').value = pickColor(PROJECT_PALETTE, state.projects.map(p => p.color));
+render();
+</script>
+
+</body>
+</html>
